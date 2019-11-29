@@ -3,9 +3,20 @@ package ds.gae;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import com.google.cloud.datastore.Datastore;
+import com.google.cloud.datastore.DatastoreOptions;
+import com.google.cloud.datastore.Entity;
+import com.google.cloud.datastore.Key;
+import com.google.cloud.datastore.PathElement;
+import com.google.cloud.datastore.Query;
+import com.google.cloud.datastore.QueryResults;
+import com.google.cloud.datastore.StructuredQuery.CompositeFilter;
+import com.google.cloud.datastore.StructuredQuery.PropertyFilter;
 
 import ds.gae.entities.Car;
 import ds.gae.entities.CarRentalCompany;
@@ -37,7 +48,30 @@ public class CarRentalModel {
 	 */
 	public Set<String> getCarTypesNames(String companyName) {
 		// FIXME add implementation
-		return null;
+		
+		Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
+		
+		// get parent key
+		Key parentCrcKey = datastore.newKeyFactory()
+				.setKind("crc")
+				.newKey(companyName);
+		
+		// get all cartypes that are children of the crc
+		Query<Entity> query = Query.newEntityQueryBuilder()
+				.setKind("cartype")
+				.setFilter(PropertyFilter.hasAncestor(parentCrcKey))
+				.build();
+		QueryResults<Entity> results = datastore.run(query);
+		
+		// map entities in results to the name of the cartype
+		Set<String> carTypeNames = new HashSet<String>();
+		results.forEachRemaining( carTypeEntity -> {
+			String carTypeName = carTypeEntity.getString("name");
+			carTypeNames.add(carTypeName);
+			System.out.println(carTypeName);
+		});
+		
+		return carTypeNames;
 	}
 
 	/**
@@ -47,7 +81,25 @@ public class CarRentalModel {
 	 */
 	public Collection<String> getAllRentalCompanyNames() {
 		// FIXME use persistence instead
-    	return CRCS.keySet();
+//    	return CRCS.keySet();
+		
+		Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
+		
+		// get all entities of type CRC
+		Query<Entity> query = Query.newEntityQueryBuilder()
+				.setKind("crc")
+				.build();
+		QueryResults<Entity> results = datastore.run(query);
+		
+		// map entities in results to the name of the crc's
+		Set<String> crcNames = new HashSet<String>();
+		results.forEachRemaining( crcEntity -> {
+			String crcName = crcEntity.getKey().getName();
+			crcNames.add(crcName);
+			System.out.println(crcName);
+		});
+		
+		return crcNames;
 	}
 
 	/**
@@ -65,7 +117,19 @@ public class CarRentalModel {
 	public Quote createQuote(String companyName, String renterName, ReservationConstraints constraints)
 			throws ReservationException {
 		// FIXME: use persistence instead
-    	CarRentalCompany crc = CRCS.get(companyName);
+//    	CarRentalCompany crc = CRCS.get(companyName);
+		
+		Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
+		
+		Key crcKey = datastore.newKeyFactory()
+				.setKind("crc")
+				.newKey(companyName);
+		
+		Entity crcEntity = datastore.get(crcKey);
+		
+		Set<Car> cars = new HashSet<Car>();
+		CarRentalCompany crc = new CarRentalCompany(crcEntity.getKey().getName(), cars);
+		
 		return crc.createQuote(constraints, renterName);
 	}
 
@@ -125,9 +189,39 @@ public class CarRentalModel {
 	 */
 	public Collection<CarType> getCarTypesOfCarRentalCompany(String companyName) {
 		// FIXME: use persistence instead
-    	CarRentalCompany crc = CRCS.get(companyName);
-    	Collection<CarType> out = new ArrayList<CarType>(crc.getAllCarTypes());
-        return out;
+//    	CarRentalCompany crc = CRCS.get(companyName);
+//    	Collection<CarType> out = new ArrayList<CarType>(crc.getAllCarTypes());
+//        return out;
+        
+		Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
+		
+		// get parent key
+		Key parentCrcKey = datastore.newKeyFactory()
+				.setKind("crc")
+				.newKey(companyName);
+		
+		// get all cartypes that are children of the crc
+		Query<Entity> query = Query.newEntityQueryBuilder()
+				.setKind("cartype")
+				.setFilter(PropertyFilter.hasAncestor(parentCrcKey))
+				.build();
+		QueryResults<Entity> results = datastore.run(query);
+		
+		// map entities in results to the name of the cartype
+		List<CarType> cartypes = new ArrayList<CarType>();
+		results.forEachRemaining( carTypeEntity -> {
+			String carTypeName = carTypeEntity.getKey().getName();
+			int nbOfSeats = ((Long) carTypeEntity.getLong("nbOfSeats")).intValue();
+			boolean smokingAllowed = carTypeEntity.getBoolean("smokingAllowed");
+			double rentalPricePerDay = carTypeEntity.getDouble("rentalPricePerDay");
+			float trunkSpace = (float) carTypeEntity.getDouble("trunkSpace");
+			CarType cartype = new CarType(carTypeName, nbOfSeats, trunkSpace, rentalPricePerDay, smokingAllowed);
+			cartypes.add(cartype);
+		});
+		
+		return cartypes;
+        
+        
 	}
 
 	/**
@@ -139,7 +233,9 @@ public class CarRentalModel {
 	 */
 	public Collection<Integer> getCarIdsByCarType(String companyName, CarType carType) {
 		Collection<Integer> out = new ArrayList<Integer>();
+//		System.out.println("getCarIds");
 		for (Car c : getCarsByCarType(companyName, carType)) {
+//			System.out.println(c.getId());
 			out.add(c.getId());
 		}
 		return out;
@@ -165,16 +261,71 @@ public class CarRentalModel {
 	 */
 	private List<Car> getCarsByCarType(String companyName, CarType carType) {
 		// FIXME: use persistence instead
-		List<Car> out = new ArrayList<Car>(); 
-		for(CarRentalCompany crc : CRCS.values()) {
-			for (Car c : crc.getCars()) {
-				if (c.getType() == carType) { 
-					out.add(c);
-				}
-			}
-		}
-		return out;
-
+//		List<Car> out = new ArrayList<Car>(); 
+//		for(CarRentalCompany crc : CRCS.values()) {
+//			for (Car c : crc.getCars()) {
+//				if (c.getType() == carType) { 
+//					out.add(c);
+//				}
+//			}
+//		}
+//		return out;
+		
+		Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
+		
+//		// get crc key
+//		Key parentCrcKey = datastore.newKeyFactory()
+//				.setKind("crc")
+//				.newKey(companyName);
+		
+		// get cartype key
+		String carTypeId = carType.getName();
+//		System.out.println(carTypeId);
+		Key parentCarTypeKey = datastore.newKeyFactory()
+				.setKind("cartype")
+				.newKey(carTypeId);
+		
+//		// get all cartypes that are children of the crc
+//		Query<Entity> query = Query.newEntityQueryBuilder()
+//				.setKind("cartype")
+//				.setFilter(PropertyFilter.hasAncestor(parentCrcKey))
+//				.build();
+//		QueryResults<Entity> carTypeEntities = datastore.run(query);
+		
+		List<Car> cars = new ArrayList<Car>();
+//		carTypeEntities.forEachRemaining( carTypeEntity -> {
+			Query<Entity> query2 = Query.newEntityQueryBuilder()
+					.setKind("car")
+//					.setFilter(PropertyFilter.hasAncestor(parentCrcKey))
+					.setFilter(PropertyFilter.hasAncestor(parentCarTypeKey))
+					.build();
+			QueryResults<Entity> carEntities = datastore.run(query2);
+//			System.out.println("size");
+//			System.out.println(carEntities.hasNext());
+			
+			carEntities.forEachRemaining( carEntity -> {
+				int id = carEntity.getKey().getId().intValue();
+				Car newCar = new Car(id,carType);
+				cars.add(newCar);
+//				System.out.println(newCar.getType());
+//				System.out.println(newCar.getId());
+			});
+//		});
+//		System.out.println("cars size");
+//		System.out.println(cars.size());
+		
+		// map entities in results to the name of the cartype
+//		List<Car> cars = new ArrayList<Car>();
+//		results.forEachRemaining( carEntity -> {
+//			int id = carEntity.getKey().getId().intValue();
+//			System.out.println(id);
+//			Car newCar = new Car(id,carType);
+//			cars.add(newCar);
+//			System.out.println(newCar.getType());
+//			System.out.println(newCar.getId());
+//		});
+		
+		return cars;
 	}
 
 	/**

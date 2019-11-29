@@ -12,6 +12,14 @@ import java.util.logging.Logger;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
 
+import com.google.cloud.datastore.Datastore;
+import com.google.cloud.datastore.DatastoreOptions;
+import com.google.cloud.datastore.Entity;
+import com.google.cloud.datastore.Key;
+import com.google.cloud.datastore.PathElement;
+import com.google.cloud.datastore.Query;
+import com.google.cloud.datastore.QueryResults;
+
 import ds.gae.CarRentalModel;
 import ds.gae.entities.Car;
 import ds.gae.entities.CarRentalCompany;
@@ -43,7 +51,17 @@ public class CarRentalServletContextListener implements ServletContextListener {
 	private boolean isDummyDataAvailable() {
 		// If the Hertz car rental company is in the datastore, we assume the dummy data
 		// is available
-		return CarRentalModel.get().getAllRentalCompanyNames().contains("Hertz");
+		
+		Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
+		
+		// get all entities of type CRC
+		Query<Entity> query = Query.newEntityQueryBuilder()
+				.setKind("crc")
+				.build();
+		QueryResults<Entity> results = datastore.run(query);
+		
+//		return CarRentalModel.get().getAllRentalCompanyNames().contains("Hertz");
+		return results.hasNext();
 		
 	}
 
@@ -57,9 +75,61 @@ public class CarRentalServletContextListener implements ServletContextListener {
 				new Object[] { name, datafile });
 		try {
 			Set<Car> cars = loadData(name, datafile);
-			CarRentalCompany company = new CarRentalCompany(name, cars);
+//			CarRentalCompany company = new CarRentalCompany(name, cars);
 			// FIXME: use persistence instead
-            CarRentalModel.get().CRCS.put(name, company);
+//            CarRentalModel.get().CRCS.put(name, company);
+
+			// datastore
+			
+			
+			// store crc in datastore
+			Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
+			Key crcKey = datastore.newKeyFactory()
+					.setKind("crc")
+					.newKey(name);
+			Entity crcEntity = Entity.newBuilder(crcKey)
+					.build();
+			datastore.put(crcEntity);
+			
+			// store carTypes in datastore
+			Set<CarType> cartypes = new HashSet<CarType>();
+			for (Car car: cars) {
+				cartypes.add(car.getType());
+			}
+			for (CarType cartype: cartypes) {
+				String carTypeId = cartype.getName() + name;
+				Key carTypeKey = datastore.newKeyFactory()
+						.addAncestor(PathElement.of("crc", name))
+						.setKind("cartype")
+						.newKey(carTypeId);
+				Entity carTypeEntity = Entity.newBuilder(carTypeKey)
+						.set("name", cartype.getName())
+						.set("nbOfSeats", cartype.getNbOfSeats())
+						.set("smokingAllowed", cartype.isSmokingAllowed())
+						.set("rentalPricePerDay", cartype.getRentalPricePerDay())
+						.set("trunkSpace", cartype.getTrunkSpace())
+						.build();
+				datastore.put(carTypeEntity);
+			}
+			
+			// store cars in datastore
+			for (Car car: cars) {
+				String carTypeId = car.getType().getName() + name;
+//				System.out.println(carTypeId);
+				Key carKey = datastore.newKeyFactory()
+						.addAncestors(
+//								PathElement.of("crc", name),
+								PathElement.of("cartype", carTypeId))
+						.setKind("car")
+						.newKey(car.getId());
+				Entity carEntity = Entity.newBuilder(carKey)
+						.build();
+				datastore.put(carEntity);
+			}
+			
+			
+			// datastore
+			
 		} catch (NumberFormatException ex) {
 			Logger.getLogger(CarRentalServletContextListener.class.getName()).log(Level.SEVERE, "bad file", ex);
 		} catch (IOException ex) {

@@ -4,12 +4,14 @@ import java.util.Objects;
 
 public class CarType {
 
+	// key
 	private String name;
+	
+	// properties
 	private int nbOfSeats;
 	private boolean smokingAllowed;
 	private double rentalPricePerDay;
-	// trunk space in liters
-	private float trunkSpace;
+	private float trunkSpace;	// trunk space in liters
 
 	/***************
 	 * CONSTRUCTOR *

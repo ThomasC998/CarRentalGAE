@@ -1,5 +1,6 @@
 package ds.gae.entities;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
@@ -11,14 +12,29 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.google.cloud.Timestamp;
+import com.google.cloud.datastore.Datastore;
+import com.google.cloud.datastore.DatastoreOptions;
+import com.google.cloud.datastore.Entity;
+import com.google.cloud.datastore.Key;
+import com.google.cloud.datastore.KeyFactory;
+import com.google.cloud.datastore.PathElement;
+import com.google.cloud.datastore.Query;
+import com.google.cloud.datastore.QueryResults;
+import com.google.cloud.datastore.StructuredQuery.CompositeFilter;
+import com.google.cloud.datastore.StructuredQuery.PropertyFilter;
+
 import ds.gae.ReservationException;
 
 public class CarRentalCompany {
 
 	private static Logger logger = Logger.getLogger(CarRentalCompany.class.getName());
 
+	// key
 	private String name;
+	// children
 	private Set<Car> cars;
+	// children
 	private Map<String, CarType> carTypes = new HashMap<String, CarType>();
 
 	/***************
@@ -30,6 +46,50 @@ public class CarRentalCompany {
 		this.cars = cars;
 		for(Car car : cars) {
 			carTypes.put(car.getType().getName(), car.getType());
+		}
+		
+		// store crc in datastore
+		Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
+		Key crcKey = datastore.newKeyFactory()
+				.setKind("crc")
+				.newKey(name);
+		Entity crcEntity = Entity.newBuilder(crcKey)
+				.build();
+		datastore.put(crcEntity);
+		
+		// store carTypes in datastore
+		Set<CarType> cartypes = new HashSet<CarType>();
+		for (Car car: cars) {
+			cartypes.add(car.getType());
+		}
+		for (CarType cartype: cartypes) {
+			String carTypeId = cartype.getName() + name;
+			Key carTypeKey = datastore.newKeyFactory()
+					.addAncestor(PathElement.of("crc", name))
+					.setKind("cartype")
+					.newKey(carTypeId);
+			Entity carTypeEntity = Entity.newBuilder(carTypeKey)
+					.set("name", cartype.getName())
+					.set("nbOfSeats", cartype.getNbOfSeats())
+					.set("smokingAllowed", cartype.isSmokingAllowed())
+					.set("rentalPricePerDay", cartype.getRentalPricePerDay())
+					.set("trunkSpace", cartype.getTrunkSpace())
+					.build();
+			datastore.put(carTypeEntity);
+		}
+		
+		// store cars in datastore
+		for (Car car: cars) {
+			String carTypeId = car.getType().getName() + name;
+			Key carKey = datastore.newKeyFactory()
+					.addAncestors(
+//							PathElement.of("crc", name),
+							PathElement.of("cartype", carTypeId))
+					.setKind("car")
+					.newKey(car.getId());
+			Entity carEntity = Entity.newBuilder(carKey)
+					.build();
+			datastore.put(carEntity);
 		}
 	}
 
@@ -69,6 +129,7 @@ public class CarRentalCompany {
 				availableCarTypes.add(car.getType());
 			}
 		}
+		
 		return availableCarTypes;
 	}
 
@@ -96,6 +157,7 @@ public class CarRentalCompany {
 				availableCars.add(car);
 			}
 		}
+		
 		return availableCars;
 	}
 
@@ -145,6 +207,27 @@ public class CarRentalCompany {
 
 		Reservation res = new Reservation(quote, car.getId());
 		car.addReservation(res);
+		
+		// use datastore
+		
+		System.out.println("crc.confirmQuote");
+		
+		Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
+		
+		KeyFactory keyFactory = datastore.newKeyFactory()
+				.setKind("reservation");
+		Key reservationKey = datastore.allocateId(keyFactory.newKey());
+		Entity reservationEntity = Entity.newBuilder(reservationKey)
+				.set("renter", quote.getRenter())
+				.set("startDate", Timestamp.of(quote.getStartDate()))
+				.set("endDate", Timestamp.of(quote.getEndDate()))
+				.set("rentalprice", quote.getRentalPrice())
+				.set("carId", car.getId())
+				.set("carType", quote.getCarType())
+				.set("rentalCompany", quote.getRentalCompany())
+				.build();
+		datastore.put(reservationEntity);
+		
 		return res;
 	}
 

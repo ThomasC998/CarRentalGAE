@@ -6,8 +6,11 @@ import java.util.Set;
 
 public class Car {
 
+	// key
 	private int id;
+	// child of
 	private CarType carType;
+	//children
 	private Set<Reservation> reservations;
 
 	/***************

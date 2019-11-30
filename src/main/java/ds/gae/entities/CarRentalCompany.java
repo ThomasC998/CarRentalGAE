@@ -18,11 +18,6 @@ import com.google.cloud.datastore.DatastoreOptions;
 import com.google.cloud.datastore.Entity;
 import com.google.cloud.datastore.Key;
 import com.google.cloud.datastore.KeyFactory;
-import com.google.cloud.datastore.PathElement;
-import com.google.cloud.datastore.Query;
-import com.google.cloud.datastore.QueryResults;
-import com.google.cloud.datastore.StructuredQuery.CompositeFilter;
-import com.google.cloud.datastore.StructuredQuery.PropertyFilter;
 
 import ds.gae.DataStoreHandler;
 import ds.gae.ReservationException;
@@ -38,7 +33,7 @@ public class CarRentalCompany {
 	// children
 	private Map<String, CarType> carTypes = new HashMap<String, CarType>();
 
-	DataStoreHandler dataStoreHandler = new DataStoreHandler();
+	private DataStoreHandler dataStoreHandler = new DataStoreHandler();
 	
 	/***************
 	 * CONSTRUCTOR *

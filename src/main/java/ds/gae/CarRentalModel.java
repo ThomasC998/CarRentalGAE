@@ -14,10 +14,8 @@ import com.google.cloud.datastore.Datastore;
 import com.google.cloud.datastore.DatastoreOptions;
 import com.google.cloud.datastore.Entity;
 import com.google.cloud.datastore.Key;
-import com.google.cloud.datastore.PathElement;
 import com.google.cloud.datastore.Query;
 import com.google.cloud.datastore.QueryResults;
-import com.google.cloud.datastore.StructuredQuery.CompositeFilter;
 import com.google.cloud.datastore.StructuredQuery.PropertyFilter;
 
 import ds.gae.entities.Car;
@@ -32,6 +30,8 @@ public class CarRentalModel {
 	// FIXME use persistence instead
 	public Map<String,CarRentalCompany> CRCS = new HashMap<String, CarRentalCompany>();	
 
+	private DataStoreHandler dataStoreHandler = new DataStoreHandler();
+	
 	private static CarRentalModel instance;
 
 	public static CarRentalModel get() {
@@ -49,31 +49,7 @@ public class CarRentalModel {
 	 *         car rental company.
 	 */
 	public Set<String> getCarTypesNames(String companyName) {
-		// FIXME add implementation
-		
-		Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
-		
-		// get parent key
-		Key parentCrcKey = datastore.newKeyFactory()
-				.setKind("crc")
-				.newKey(companyName);
-		
-		// get all cartypes that are children of the crc
-		Query<Entity> query = Query.newEntityQueryBuilder()
-				.setKind("cartype")
-				.setFilter(PropertyFilter.hasAncestor(parentCrcKey))
-				.build();
-		QueryResults<Entity> results = datastore.run(query);
-		
-		// map entities in results to the name of the cartype
-		Set<String> carTypeNames = new HashSet<String>();
-		results.forEachRemaining( carTypeEntity -> {
-			String carTypeName = carTypeEntity.getKey().getName();
-			carTypeNames.add(carTypeName);
-			System.out.println(carTypeName);
-		});
-		
-		return carTypeNames;
+		return dataStoreHandler.getCarTypesName(companyName);
 	}
 
 	/**
@@ -82,26 +58,7 @@ public class CarRentalModel {
 	 * @return the list of car rental companies
 	 */
 	public Collection<String> getAllRentalCompanyNames() {
-		// FIXME use persistence instead
-//    	return CRCS.keySet();
-		
-		Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
-		
-		// get all entities of type CRC
-		Query<Entity> query = Query.newEntityQueryBuilder()
-				.setKind("crc")
-				.build();
-		QueryResults<Entity> results = datastore.run(query);
-		
-		// map entities in results to the name of the crc's
-		Set<String> crcNames = new HashSet<String>();
-		results.forEachRemaining( crcEntity -> {
-			String crcName = crcEntity.getKey().getName();
-			crcNames.add(crcName);
-			System.out.println(crcName);
-		});
-		
-		return crcNames;
+		return dataStoreHandler.getAllRentalCompanyNames();
 	}
 
 	/**

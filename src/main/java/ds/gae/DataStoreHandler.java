@@ -1,5 +1,9 @@
 package ds.gae;
 
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
+
 import com.google.cloud.datastore.Datastore;
 import com.google.cloud.datastore.DatastoreOptions;
 import com.google.cloud.datastore.Entity;
@@ -8,6 +12,7 @@ import com.google.cloud.datastore.KeyFactory;
 import com.google.cloud.datastore.PathElement;
 import com.google.cloud.datastore.Query;
 import com.google.cloud.datastore.QueryResults;
+import com.google.cloud.datastore.StructuredQuery.PropertyFilter;
 
 import ds.gae.entities.Car;
 import ds.gae.entities.CarRentalCompany;
@@ -27,6 +32,10 @@ public class DataStoreHandler {
 		
 	}
 	
+	/************
+	 * COMPANYS *
+	 ************/
+	
 	public static void storeCRC(CarRentalCompany crc) {
 		Key key = crcKeyFactory.newKey(crc.getName());
 		
@@ -35,6 +44,28 @@ public class DataStoreHandler {
 			    .build();
 		datastore.put(crcEntity);
 	}
+	
+	public static Collection<String> getAllRentalCompanyNames() {
+		// get all entities of type CRC
+		Query<Entity> query = Query.newEntityQueryBuilder()
+				.setKind("crc")
+				.build();
+		QueryResults<Entity> results = datastore.run(query);
+		
+		// map entities in results to the name of the crc's
+		Set<String> crcNames = new HashSet<String>();
+		results.forEachRemaining( crcEntity -> {
+			String crcName = crcEntity.getKey().getName();
+			crcNames.add(crcName);
+			System.out.println(crcName);
+		});
+		
+		return crcNames;
+	}
+	
+	/************
+	 * CARTYPES *
+	 ************/
 	
 	public static void storeCarType(CarType ct, String crcName) {
 		String carTypeId = ct.getName() + crcName;
@@ -52,6 +83,33 @@ public class DataStoreHandler {
 				.build();
 		datastore.put(ctEntity);
 	}
+	
+	public Set<String> getCarTypesName(String companyName) {
+		// get parent key
+		Key parentCrcKey = crcKeyFactory.newKey(companyName);
+		
+		// get all cartypes that are children of the crc
+		Query<Entity> query = Query.newEntityQueryBuilder()
+				.setKind("cartype")
+				.setFilter(PropertyFilter.hasAncestor(parentCrcKey))
+				.build();
+		QueryResults<Entity> results = datastore.run(query);
+		
+		// map entities in results to the name of the cartype
+		Set<String> carTypeNames = new HashSet<String>();
+		results.forEachRemaining( carTypeEntity -> {
+			String carTypeName = carTypeEntity.getKey().getName();
+			carTypeNames.add(carTypeName);
+			System.out.println(carTypeName);
+		});
+		
+		return carTypeNames;
+		
+	}
+	
+	/********
+	 * CARS *
+	 ********/
 	
 	public static void storeCar(Car car, String crcName) {
 		String carTypeId = car.getType().getName() + crcName;

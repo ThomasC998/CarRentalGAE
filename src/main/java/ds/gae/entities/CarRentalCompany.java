@@ -24,6 +24,7 @@ import com.google.cloud.datastore.QueryResults;
 import com.google.cloud.datastore.StructuredQuery.CompositeFilter;
 import com.google.cloud.datastore.StructuredQuery.PropertyFilter;
 
+import ds.gae.DataStoreHandler;
 import ds.gae.ReservationException;
 
 public class CarRentalCompany {
@@ -37,6 +38,8 @@ public class CarRentalCompany {
 	// children
 	private Map<String, CarType> carTypes = new HashMap<String, CarType>();
 
+	DataStoreHandler dataStoreHandler = new DataStoreHandler();
+	
 	/***************
 	 * CONSTRUCTOR *
 	 ***************/
@@ -49,13 +52,7 @@ public class CarRentalCompany {
 		}
 		
 		// store crc in datastore
-		Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
-		Key crcKey = datastore.newKeyFactory()
-				.setKind("crc")
-				.newKey(name);
-		Entity crcEntity = Entity.newBuilder(crcKey)
-				.build();
-		datastore.put(crcEntity);
+		dataStoreHandler.storeCRC(this);
 		
 		// store carTypes in datastore
 		Set<CarType> cartypes = new HashSet<CarType>();
@@ -63,33 +60,12 @@ public class CarRentalCompany {
 			cartypes.add(car.getType());
 		}
 		for (CarType cartype: cartypes) {
-			String carTypeId = cartype.getName() + name;
-			Key carTypeKey = datastore.newKeyFactory()
-					.addAncestor(PathElement.of("crc", name))
-					.setKind("cartype")
-					.newKey(carTypeId);
-			Entity carTypeEntity = Entity.newBuilder(carTypeKey)
-					.set("name", cartype.getName())
-					.set("nbOfSeats", cartype.getNbOfSeats())
-					.set("smokingAllowed", cartype.isSmokingAllowed())
-					.set("rentalPricePerDay", cartype.getRentalPricePerDay())
-					.set("trunkSpace", cartype.getTrunkSpace())
-					.build();
-			datastore.put(carTypeEntity);
+			dataStoreHandler.storeCarType(cartype, this.name);
 		}
 		
 		// store cars in datastore
 		for (Car car: cars) {
-			String carTypeId = car.getType().getName() + name;
-			Key carKey = datastore.newKeyFactory()
-					.addAncestors(
-//							PathElement.of("crc", name),
-							PathElement.of("cartype", carTypeId))
-					.setKind("car")
-					.newKey(car.getId());
-			Entity carEntity = Entity.newBuilder(carKey)
-					.build();
-			datastore.put(carEntity);
+			dataStoreHandler.storeCar(car, this.name);
 		}
 	}
 

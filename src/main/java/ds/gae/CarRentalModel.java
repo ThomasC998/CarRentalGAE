@@ -80,17 +80,7 @@ public class CarRentalModel {
 		
 		System.out.println("crModel.createQuote");
 		
-		Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
-		
-		Key crcKey = datastore.newKeyFactory()
-				.setKind("crc")
-				.newKey(companyName);
-		
-		Entity crcEntity = datastore.get(crcKey);
-		
-		Set<Car> cars = new HashSet<Car>();
-		CarRentalCompany crc = new CarRentalCompany(crcEntity.getKey().getName(), cars);
-		
+		CarRentalCompany crc = dataStoreHandler.getCRC(companyName);
 		return crc.createQuote(constraints, renterName);
 	}
 

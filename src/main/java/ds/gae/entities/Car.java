@@ -13,6 +13,8 @@ public class Car {
 	//children
 	private Set<Reservation> reservations;
 
+	private String carTypeName;
+	
 	/***************
 	 * CONSTRUCTOR *
 	 ***************/
@@ -21,6 +23,11 @@ public class Car {
 		this.id = uid;
 		this.carType = carType;
 		this.reservations = new HashSet<Reservation>();
+	}
+	
+	public Car(int uid, String carTypeName) {
+		this.id = uid;
+		this.carTypeName = carTypeName;
 	}
 
 	/******

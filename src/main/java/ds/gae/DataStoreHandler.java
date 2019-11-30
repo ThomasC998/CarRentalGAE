@@ -45,6 +45,17 @@ public class DataStoreHandler {
 		datastore.put(crcEntity);
 	}
 	
+	public CarRentalCompany getCRC(String crcName) {
+		Key crcKey = crcKeyFactory.newKey(crcName);
+		Entity crcEntity = datastore.get(crcKey);
+		
+		// Get crc cars
+		Set<Car> cars = getAllCompanyCars(crcName);
+
+		CarRentalCompany crc = new CarRentalCompany(crcEntity.getKey().getName(), cars);
+		return crc;
+	}
+	
 	public static Collection<String> getAllRentalCompanyNames() {
 		// get all entities of type CRC
 		Query<Entity> query = Query.newEntityQueryBuilder()
@@ -122,5 +133,37 @@ public class DataStoreHandler {
 				.build();
 		datastore.put(carEntity);
 	}
+	
+	public Set<Car> getAllCompanyCars(String crcName) {
+		Set<Car> cars = new HashSet<Car>();
+		
+		Set<String> carTypes = getCarTypesName(crcName);
+		for (String ct : carTypes) {
+			// get parent key for car
+			Key parentCarTypeKey = carTypeKeyFactory.newKey(ct);
+			
+			// get all cars that are children of the cartype
+			Query<Entity> query = Query.newEntityQueryBuilder()
+					.setKind("car")
+					.setFilter(PropertyFilter.hasAncestor(parentCarTypeKey))
+					.build();
+			QueryResults<Entity> results = datastore.run(query);
+			
+			// map entities in results to a car set
+			Set<Car> carsSet = new HashSet<Car>();
+			results.forEachRemaining( carEntity -> {
+				Car carObj = new Car(Integer.parseInt(carEntity.getKey().getName()), ct);
+				carsSet.add(carObj);
+			});
+			cars.addAll(carsSet);
+		}
+		return cars;
+	}
+	
+	/****************
+	 * RESERVATIONS *
+	 ****************/
+	
+	
 	
 }

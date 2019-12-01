@@ -59,7 +59,7 @@ public class CarRentalServletContextListener implements ServletContextListener {
 			Set<Car> cars = loadData(name, datafile);
 			CarRentalCompany company = new CarRentalCompany(name, cars);
 			// FIXME: use persistence instead
-            CarRentalModel.get().CRCS.put(name, company);
+            //CarRentalModel.get().CRCS.put(name, company);
 		} catch (NumberFormatException ex) {
 			Logger.getLogger(CarRentalServletContextListener.class.getName()).log(Level.SEVERE, "bad file", ex);
 		} catch (IOException ex) {

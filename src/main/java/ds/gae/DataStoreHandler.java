@@ -1,7 +1,10 @@
 package ds.gae;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import com.google.cloud.datastore.Datastore;
@@ -17,6 +20,8 @@ import com.google.cloud.datastore.StructuredQuery.PropertyFilter;
 import ds.gae.entities.Car;
 import ds.gae.entities.CarRentalCompany;
 import ds.gae.entities.CarType;
+import ds.gae.entities.Quote;
+import ds.gae.entities.Reservation;
 
 // This class handles all interaction between the DataStore and the CarRentalModel
 public class DataStoreHandler {
@@ -82,8 +87,7 @@ public class DataStoreHandler {
 		String carTypeId = ct.getName() + crcName;
 		Key key = carTypeKeyFactory
 				.addAncestor(PathElement.of("crc", crcName))
-				.setKind("cartype")
-				.newKey(ct.getName());
+				.newKey(carTypeId);
 		
 		Entity ctEntity = Entity.newBuilder(key)
 				.set("name", ct.getName())
@@ -95,9 +99,19 @@ public class DataStoreHandler {
 		datastore.put(ctEntity);
 	}
 	
-	public Set<String> getCarTypesName(String companyName) {
+	/**
+	 * Get the car types available in the given car rental company.
+	 *
+	 * @param companyName the given car rental company
+	 * @return The list of car types in the given car rental company.
+	 */
+	public Collection<CarType> getCarTypesOfCarRentalCompany(String companyName) {
+		Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
+		
 		// get parent key
-		Key parentCrcKey = crcKeyFactory.newKey(companyName);
+		Key parentCrcKey = datastore.newKeyFactory()
+				.setKind("crc")
+				.newKey(companyName);
 		
 		// get all cartypes that are children of the crc
 		Query<Entity> query = Query.newEntityQueryBuilder()
@@ -107,15 +121,18 @@ public class DataStoreHandler {
 		QueryResults<Entity> results = datastore.run(query);
 		
 		// map entities in results to the name of the cartype
-		Set<String> carTypeNames = new HashSet<String>();
+		List<CarType> cartypes = new ArrayList<CarType>();
 		results.forEachRemaining( carTypeEntity -> {
-			String carTypeName = carTypeEntity.getKey().getName();
-			carTypeNames.add(carTypeName);
-			System.out.println(carTypeName);
+			String carTypeName = carTypeEntity.getString("name");
+			int nbOfSeats = ((Long) carTypeEntity.getLong("nbOfSeats")).intValue();
+			boolean smokingAllowed = carTypeEntity.getBoolean("smokingAllowed");
+			double rentalPricePerDay = carTypeEntity.getDouble("rentalPricePerDay");
+			float trunkSpace = (float) carTypeEntity.getDouble("trunkSpace");
+			CarType cartype = new CarType(carTypeName, nbOfSeats, trunkSpace, rentalPricePerDay, smokingAllowed);
+			cartypes.add(cartype);
 		});
 		
-		return carTypeNames;
-		
+		return cartypes;
 	}
 	
 	/********
@@ -125,8 +142,9 @@ public class DataStoreHandler {
 	public static void storeCar(Car car, String crcName) {
 		String carTypeId = car.getType().getName() + crcName;
 		Key key = carKeyFactory
-				.addAncestor(PathElement.of("cartype", carTypeId))
-				.setKind("car")
+				.addAncestors(
+						PathElement.of("crc", crcName),
+						PathElement.of("cartype", carTypeId))
 				.newKey(car.getId());
 		
 		Entity carEntity = Entity.newBuilder(key)
@@ -137,10 +155,10 @@ public class DataStoreHandler {
 	public Set<Car> getAllCompanyCars(String crcName) {
 		Set<Car> cars = new HashSet<Car>();
 		
-		Set<String> carTypes = getCarTypesName(crcName);
-		for (String ct : carTypes) {
+		Collection<CarType> carTypes = getCarTypesOfCarRentalCompany(crcName);
+		for (CarType ct : carTypes) {
 			// get parent key for car
-			Key parentCarTypeKey = carTypeKeyFactory.newKey(ct);
+			Key parentCarTypeKey = carTypeKeyFactory.newKey(ct.getName());
 			
 			// get all cars that are children of the cartype
 			Query<Entity> query = Query.newEntityQueryBuilder()
@@ -152,7 +170,9 @@ public class DataStoreHandler {
 			// map entities in results to a car set
 			Set<Car> carsSet = new HashSet<Car>();
 			results.forEachRemaining( carEntity -> {
-				Car carObj = new Car(Integer.parseInt(carEntity.getKey().getName()), ct);
+				int uid = Integer.parseInt(carEntity.getKey().getName());
+				Set<Reservation> reservations = getCarReservations(uid);
+				Car carObj = new Car(uid, ct, reservations);
 				carsSet.add(carObj);
 			});
 			cars.addAll(carsSet);
@@ -163,6 +183,64 @@ public class DataStoreHandler {
 	/****************
 	 * RESERVATIONS *
 	 ****************/
+	
+	/**
+	 * Get all reservations made by the given car renter.
+	 *
+	 * @param renter name of the car renter
+	 * @return the list of reservations of the given car renter
+	 */
+	public List<Reservation> getReservations(String renter) {
+    	
+		Query<Entity> query = Query.newEntityQueryBuilder()
+				.setKind("reservation")
+				.build();
+		QueryResults<Entity> reservationEntities = datastore.run(query);
+
+		List<Reservation> reservations = new ArrayList<Reservation>();	
+		reservationEntities.forEachRemaining( reservationEntity -> {
+			String renterName = reservationEntity.getString("renter");
+			if (renterName.equals(renter)) {
+				Date startDate = reservationEntity.getTimestamp("startDate").toDate();
+				Date endDate = reservationEntity.getTimestamp("endDate").toDate();
+				Double rentalPrice = reservationEntity.getDouble("rentalPrice");
+				int carId = ((Long) reservationEntity.getLong("carId")).intValue();
+				String carType = reservationEntity.getString("carType");
+				String rentalCompany = reservationEntity.getString("rentalCompany");
+				Quote quote = new Quote(renterName, startDate, endDate, rentalCompany, carType, rentalPrice);
+				Reservation reservation = new Reservation(quote, carId);
+				reservations.add(reservation);
+			}
+		});
+    	
+    	return reservations;
+	}
+	
+	public Set<Reservation> getCarReservations(int uid) {
+		Set<Reservation> reservations = new HashSet<Reservation>();	
+		
+		Query<Entity> query = Query.newEntityQueryBuilder()
+				.setKind("reservation")
+				.build();
+		QueryResults<Entity> reservationEntities = datastore.run(query);
+
+		reservationEntities.forEachRemaining( reservationEntity -> {
+			int carId = ((Long) reservationEntity.getLong("carId")).intValue();
+			if (carId == uid) {
+				String renterName = reservationEntity.getString("renter");
+				Date startDate = reservationEntity.getTimestamp("startDate").toDate();
+				Date endDate = reservationEntity.getTimestamp("endDate").toDate();
+				Double rentalPrice = reservationEntity.getDouble("rentalPrice");
+				String carType = reservationEntity.getString("carType");
+				String rentalCompany = reservationEntity.getString("rentalCompany");
+				Quote quote = new Quote(renterName, startDate, endDate, rentalCompany, carType, rentalPrice);
+				Reservation reservation = new Reservation(quote, carId);
+				reservations.add(reservation);
+			}
+		});
+		
+		return reservations;
+	}
 	
 	
 	

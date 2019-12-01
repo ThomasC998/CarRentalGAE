@@ -49,7 +49,7 @@ public class CarType {
 	public float getTrunkSpace() {
 		return trunkSpace;
 	}
-
+	
 	/*************
 	 * TO STRING *
 	 *************/

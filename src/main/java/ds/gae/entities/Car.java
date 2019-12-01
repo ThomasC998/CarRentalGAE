@@ -12,8 +12,6 @@ public class Car {
 	private CarType carType;
 	//children
 	private Set<Reservation> reservations;
-
-	private String carTypeName;
 	
 	/***************
 	 * CONSTRUCTOR *
@@ -25,9 +23,10 @@ public class Car {
 		this.reservations = new HashSet<Reservation>();
 	}
 	
-	public Car(int uid, String carTypeName) {
+	public Car(int uid, CarType carType, Set<Reservation> reservations) {
 		this.id = uid;
-		this.carTypeName = carTypeName;
+		this.carType = carType;
+		this.reservations = reservations;
 	}
 
 	/******
@@ -75,4 +74,5 @@ public class Car {
 	public void removeReservation(Reservation reservation) {
 		reservations.remove(reservation);
 	}
+	
 }

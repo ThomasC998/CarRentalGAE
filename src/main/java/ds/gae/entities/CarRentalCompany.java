@@ -222,25 +222,37 @@ public class CarRentalCompany {
 		
 		// get all current reservations
 		List<Entity> reservationEntities = getReservationEntitiesInDateRange(start, end);
+		System.out.println(reservationEntities);
 		
 		// get cars of the current reservations
 		Map<Car,String> carsInReservationCrcMap = new HashMap<Car, String>();
 		for (Entity reservationEntity: reservationEntities) {
 			List<PathElement> reservationAncestors = reservationEntity.getKey().getAncestors();
 			String crcName = "";
+			String carTypeName = "";
 			for (PathElement reservationAncestor: reservationAncestors) {
 				if(reservationAncestor.getKind().equals("crc")) {
 					crcName = reservationAncestor.getName();
+				} else if(reservationAncestor.getKind().equals("cartype")) {
+					carTypeName = reservationAncestor.getName();
 				}
 			}
+			
+			System.out.println(crcName);
+			System.out.println(carType);
 
 			for (PathElement reservationAncestor: reservationAncestors) {
 				if(reservationAncestor.getKind().equals("car")) {
 					int carId = reservationAncestor.getId().intValue();
+					System.out.println(carId);
 					Key carKey = datastore.newKeyFactory()
+							.addAncestors(
+									PathElement.of("crc", crcName),
+									PathElement.of("cartype", carTypeName))
 							.setKind("car")
 							.newKey(carId);
 					Entity carEntity = datastore.get(carKey);
+					System.out.println(carEntity);
 					List<PathElement> carAncestors = carEntity.getKey().getAncestors();
 					for (PathElement carAncestor: carAncestors) {
 						if(carAncestor.getKind().equals("cartype")) {
@@ -250,7 +262,7 @@ public class CarRentalCompany {
 									.setKind("cartype")
 									.newKey(carTypeId);
 							Entity carTypeEntity = datastore.get(carTypeKey);
-							String carTypeName = carTypeEntity.getString("name");
+//							String carTypeName = carTypeEntity.getString("name");
 							if (carType.equals("") || carTypeName.equals(carType)) {
 								int nbOfSeats = ((Long) carTypeEntity.getLong("nbOfSeats")).intValue();
 								boolean smokingAllowed = carTypeEntity.getBoolean("smokingAllowed");
@@ -413,8 +425,13 @@ public class CarRentalCompany {
 		
 		Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
 		
+		String carTypeId = quote.getCarType() + quote.getRentalCompany();
+		System.out.println(carTypeId);
 		KeyFactory keyFactory = datastore.newKeyFactory()
-				.addAncestor(PathElement.of("car", car.getId()))
+				.addAncestors(
+						PathElement.of("crc", quote.getRentalCompany()),
+						PathElement.of("cartype", carTypeId),
+						PathElement.of("car", car.getId()))
 				.setKind("reservation");
 		Key reservationKey = datastore.allocateId(keyFactory.newKey());
 		Entity reservationEntity = Entity.newBuilder(reservationKey)

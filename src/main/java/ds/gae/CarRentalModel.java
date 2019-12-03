@@ -72,7 +72,7 @@ public class CarRentalModel {
 		results.forEachRemaining( carTypeEntity -> {
 			String carTypeName = carTypeEntity.getString("name");
 			carTypeNames.add(carTypeName);
-			System.out.println(carTypeName);
+//			System.out.println(carTypeName);
 		});
 		
 		return carTypeNames;
@@ -198,9 +198,13 @@ public class CarRentalModel {
 		
 		Car car = crc.getAvailableCar(quote);
 		Reservation res = new Reservation(quote, car.getId());
-		
+
+		String carTypeId = quote.getCarType() + quote.getRentalCompany();
 		KeyFactory keyFactory = datastore.newKeyFactory()
-				.addAncestor(PathElement.of("car", car.getId()))
+				.addAncestors(
+						PathElement.of("crc", quote.getRentalCompany()),
+						PathElement.of("cartype", carTypeId),
+						PathElement.of("car", car.getId()))
 				.setKind("reservation");
 		Key reservationKey = datastore.allocateId(keyFactory.newKey());
 		Entity reservationEntity = Entity.newBuilder(reservationKey)

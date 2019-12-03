@@ -4,7 +4,7 @@
 	xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_3_1.xsd"
 	version="3.1">
 	<welcome-file-list>
-		<welcome-file>persistTest</welcome-file>
+		<welcome-file>main.jsp</welcome-file>
 	</welcome-file-list>
 	
 	<listener>
@@ -18,5 +18,41 @@
 	<servlet-mapping>
 		<servlet-name>PersistTest</servlet-name>
 		<url-pattern>/persistTest</url-pattern>
+	</servlet-mapping>
+	
+	<servlet>
+		<servlet-name>Login</servlet-name>
+		<servlet-class>ds.gae.servlets.LoginServlet</servlet-class>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>Login</servlet-name>
+		<url-pattern>/login</url-pattern>
+	</servlet-mapping>
+	
+	<servlet>
+		<servlet-name>CreateQuote</servlet-name>
+		<servlet-class>ds.gae.servlets.CreateQuoteServlet</servlet-class>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>CreateQuote</servlet-name>
+		<url-pattern>/createQuote</url-pattern>
+	</servlet-mapping>
+	
+	<servlet>
+		<servlet-name>ConfirmQuotes</servlet-name>
+		<servlet-class>ds.gae.servlets.ConfirmQuotesServlet</servlet-class>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>ConfirmQuotes</servlet-name>
+		<url-pattern>/confirmQuotes</url-pattern>
+	</servlet-mapping>
+	
+	<servlet>
+		<servlet-name>Worker</servlet-name>
+		<servlet-class>ds.gae.Worker</servlet-class>
+	</servlet>
+	<servlet-mapping>
+		<servlet-name>Worker</servlet-name>
+		<url-pattern>/worker</url-pattern>
 	</servlet-mapping>
 </web-app>

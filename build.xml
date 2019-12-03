@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <project basedir="." default="zipSource" name="CarRentalGAE">
-	<description>This is the build/run script for the GAE1 assignment. </description>
+	<description>This is the build/run script for the GAE2 assignment. </description>
 
 	<!--
     *************************************************************
        Please set the following parameter for the filename 
-       for the final zip to `gae1.firstname.lastname`.
+       for the final zip to `gae2.firstname.lastname`.
     ************************************************************* -->
-	<property name="zip.filename" value="gae1.ADDFIRSTNAME.ADDLASTNAME" />
+	<property name="zip.filename" value="gae2.ADDFIRSTNAME.ADDLASTNAME" />
 
 	<!--
     ********************************************************

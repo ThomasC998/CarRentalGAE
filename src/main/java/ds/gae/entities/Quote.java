@@ -1,9 +1,10 @@
 package ds.gae.entities;
 
+import java.io.Serializable;
 import java.util.Date;
 import java.util.Objects;
 
-public class Quote {
+public class Quote implements Serializable {
 
 	private Date startDate;
 	private Date endDate;

@@ -3,6 +3,10 @@ package ds.gae.view;
 import java.util.stream.Stream;
 
 public enum JSPSite {
+	CREATE_QUOTES("Book", "/main.jsp", true),
+	RESERVATIONS("View Bookings", "/bookings.jsp", true),
+	RESERVATION_ERROR("Reservation Error", "/reservationError.jsp", false),
+	CONFIRM_QUOTES_RESPONSE("Confirm Quote Reply", "/confirmQuotesReply.jsp", false),
 	LOGIN("Login", "/login.jsp", false),
 	PERSIST_TEST_SERVLET("Persist Test", "/persistTest", true),
 	PERSIST_TEST("Persist Test", "/persistTest.jsp", false);

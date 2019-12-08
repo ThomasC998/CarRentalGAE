@@ -12,6 +12,12 @@ import java.util.logging.Logger;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
 
+import com.google.cloud.datastore.Datastore;
+import com.google.cloud.datastore.DatastoreOptions;
+import com.google.cloud.datastore.Entity;
+import com.google.cloud.datastore.Key;
+import com.google.cloud.datastore.PathElement;
+
 import ds.gae.CarRentalModel;
 import ds.gae.entities.Car;
 import ds.gae.entities.CarRentalCompany;
@@ -58,8 +64,53 @@ public class CarRentalServletContextListener implements ServletContextListener {
 		try {
 			Set<Car> cars = loadData(name, datafile);
 			CarRentalCompany company = new CarRentalCompany(name, cars);
-			// FIXME: use persistence instead
-            CarRentalModel.get().CRCS.put(name, company);
+			// use datastore
+			
+			// store crc in datastore
+			Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
+			Key crcKey = datastore.newKeyFactory()
+					.setKind("crc")
+					.newKey(name);
+			Entity crcEntity = Entity.newBuilder(crcKey)
+					.build();
+			datastore.put(crcEntity);
+			
+			// store carTypes in datastore
+			Set<CarType> cartypes = new HashSet<CarType>();
+			for (Car car: cars) {
+				cartypes.add(car.getType());
+			}
+			for (CarType cartype: cartypes) {
+				String carTypeId = cartype.getName();
+				Key carTypeKey = datastore.newKeyFactory()
+						.addAncestor(PathElement.of("crc", name))
+						.setKind("cartype")
+						.newKey(carTypeId);
+				Entity carTypeEntity = Entity.newBuilder(carTypeKey)
+						.set("nbOfSeats", cartype.getNbOfSeats())
+						.set("smokingAllowed", cartype.isSmokingAllowed())
+						.set("rentalPricePerDay", cartype.getRentalPricePerDay())
+						.set("trunkSpace", cartype.getTrunkSpace())
+						.build();
+				datastore.put(carTypeEntity);
+			}
+			
+			// store cars in datastore
+			for (Car car: cars) {
+				String carTypeId = car.getType().getName();
+				Key carKey = datastore.newKeyFactory()
+						.addAncestors(
+								PathElement.of("crc", name),
+								PathElement.of("cartype", carTypeId))
+						.setKind("car")
+						.newKey(car.getId());
+				Entity carEntity = Entity.newBuilder(carKey)
+						.build();
+				datastore.put(carEntity);
+			}
+			
+			// end use datastore
+			
 		} catch (NumberFormatException ex) {
 			Logger.getLogger(CarRentalServletContextListener.class.getName()).log(Level.SEVERE, "bad file", ex);
 		} catch (IOException ex) {

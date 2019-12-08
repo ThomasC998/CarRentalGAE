@@ -32,9 +32,6 @@ import ds.gae.entities.ReservationConstraints;
 
 public class CarRentalModel {
 
-	// FIXME use persistence instead
-	public Map<String,CarRentalCompany> CRCS = new HashMap<String, CarRentalCompany>();
-
 	private static CarRentalModel instance;
 
 	public static CarRentalModel get() {
@@ -70,9 +67,8 @@ public class CarRentalModel {
 		// map entities in results to the name of the cartype
 		Set<String> carTypeNames = new HashSet<String>();
 		results.forEachRemaining( carTypeEntity -> {
-			String carTypeName = carTypeEntity.getString("name");
+			String carTypeName = carTypeEntity.getKey().getName();
 			carTypeNames.add(carTypeName);
-//			System.out.println(carTypeName);
 		});
 		
 		return carTypeNames;
@@ -172,11 +168,20 @@ public class CarRentalModel {
 		try {
 			for (Quote quote: quotes) {
 				Reservation reservation = confirmQuoteInTransaction(quote, tx);
+				for (Reservation alreadyConfirmedReservation: reservations) {
+					if (alreadyConfirmedReservation.getCarId() == reservation.getCarId()
+							&& alreadyConfirmedReservation.getRentalCompany().equals(reservation.getRentalCompany())) {
+						throw new ReservationException("Reservation failed, this renter tried to reserve the car with id "
+							+ reservation.getCarId() + " of rental company " + reservation.getRentalCompany() + " more than once.");
+					}
+				}
 				reservations.add(reservation);
 			}
 			tx.commit();
-			} finally {
+		} finally {
+			System.out.println("finally");
 			if (tx.isActive()) {
+				System.out.println("rollback");
 				tx.rollback();
 			}
 		}
@@ -196,10 +201,11 @@ public class CarRentalModel {
 		Set<Car> cars = new HashSet<Car>();
 		CarRentalCompany crc = new CarRentalCompany(crcEntity.getKey().getName(), cars);
 		
+		System.out.println("getAvailableCar in confirmQuoteInTransaction");
 		Car car = crc.getAvailableCar(quote);
 		Reservation res = new Reservation(quote, car.getId());
 
-		String carTypeId = quote.getCarType() + quote.getRentalCompany();
+		String carTypeId = quote.getCarType();
 		KeyFactory keyFactory = datastore.newKeyFactory()
 				.addAncestors(
 						PathElement.of("crc", quote.getRentalCompany()),
@@ -212,12 +218,11 @@ public class CarRentalModel {
 				.set("startDate", Timestamp.of(quote.getStartDate()))
 				.set("endDate", Timestamp.of(quote.getEndDate()))
 				.set("rentalPrice", quote.getRentalPrice())
-				.set("carId", car.getId())
-				.set("carType", quote.getCarType())
-				.set("rentalCompany", quote.getRentalCompany())
 				.build();
 		
 		tx.put(reservationEntity);
+		System.out.println("reservations");
+		System.out.println(getReservations(quote.getRenter()));
 		
 		return res;
 	}
@@ -234,19 +239,29 @@ public class CarRentalModel {
 		
 		Query<Entity> query = Query.newEntityQueryBuilder()
 				.setKind("reservation")
+				.setFilter(PropertyFilter.eq("renter", renter))
 				.build();
 		QueryResults<Entity> reservationEntities = datastore.run(query);
 
 		List<Reservation> reservations = new ArrayList<Reservation>();	
 		reservationEntities.forEachRemaining( reservationEntity -> {
-			String renterName = reservationEntity.getString("renter");
+			List<PathElement> reservationAncestors = reservationEntity.getKey().getAncestors();
+			String crcName = "";
+			String carTypeName = "";
+			int carId = 0;
+			for (PathElement reservationAncestor: reservationAncestors) {
+				if(reservationAncestor.getKind().equals("crc")) {
+					crcName = reservationAncestor.getName();
+				} else if(reservationAncestor.getKind().equals("cartype")) {
+					carTypeName = reservationAncestor.getName();
+				} else if(reservationAncestor.getKind().equals("car")) {
+					carId = reservationAncestor.getId().intValue();
+				}
+			}
 			Date startDate = reservationEntity.getTimestamp("startDate").toDate();
 			Date endDate = reservationEntity.getTimestamp("endDate").toDate();
 			Double rentalPrice = reservationEntity.getDouble("rentalPrice");
-			int carId = ((Long) reservationEntity.getLong("carId")).intValue();
-			String carType = reservationEntity.getString("carType");
-			String rentalCompany = reservationEntity.getString("rentalCompany");
-			Quote quote = new Quote(renterName, startDate, endDate, rentalCompany, carType, rentalPrice);
+			Quote quote = new Quote(renter, startDate, endDate, crcName, carTypeName, rentalPrice);
 			Reservation reservation = new Reservation(quote, carId);
 			reservations.add(reservation);
 		});
@@ -279,7 +294,7 @@ public class CarRentalModel {
 		// map entities in results to the name of the cartype
 		List<CarType> cartypes = new ArrayList<CarType>();
 		results.forEachRemaining( carTypeEntity -> {
-			String carTypeName = carTypeEntity.getString("name");
+			String carTypeName = carTypeEntity.getKey().getName();
 			int nbOfSeats = ((Long) carTypeEntity.getLong("nbOfSeats")).intValue();
 			boolean smokingAllowed = carTypeEntity.getBoolean("smokingAllowed");
 			double rentalPricePerDay = carTypeEntity.getDouble("rentalPricePerDay");
@@ -289,8 +304,6 @@ public class CarRentalModel {
 		});
 		
 		return cartypes;
-        
-        
 	}
 
 	/**
@@ -331,7 +344,7 @@ public class CarRentalModel {
 		Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
 		
 		// get cartype key
-		String carTypeId = carType.getName() + companyName;
+		String carTypeId = carType.getName();
 		Key parentCarTypeKey = datastore.newKeyFactory()
 				.addAncestor(PathElement.of("crc", companyName))
 				.setKind("cartype")

@@ -12,6 +12,8 @@ public class Car {
 	private CarType carType;
 	//children
 	private Set<Reservation> reservations;
+	// parent
+	private String rentalCompanyName;
 
 	/***************
 	 * CONSTRUCTOR *
@@ -37,6 +39,18 @@ public class Car {
 
 	public CarType getType() {
 		return carType;
+	}
+	
+	/*****************
+	 * RENTALCOMPANY *
+	 *****************/
+
+	public String getRentalCompanyName() {
+		return rentalCompanyName;
+	}
+	
+	public void setRentalCompany(String rentalCompanyName) {
+		this.rentalCompanyName = rentalCompanyName;
 	}
 
 	/****************

@@ -10,6 +10,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 
+import com.google.appengine.api.taskqueue.Queue;
+import com.google.appengine.api.taskqueue.QueueFactory;
+import com.google.appengine.api.taskqueue.TaskOptions;
 import com.google.cloud.Timestamp;
 import com.google.cloud.datastore.Datastore;
 import com.google.cloud.datastore.DatastoreOptions;
@@ -178,6 +181,11 @@ public class CarRentalModel {
 				reservations.add(reservation);
 			}
 			tx.commit();
+			
+			// Add a task to the queue to inform the user the quote has been confirmed
+			Queue queue = QueueFactory.getDefaultQueue();
+			queue.add(TaskOptions.Builder.withUrl("/worker")); //.header("Host", "service") default header is used .param("reservations","test")
+			
 		} finally {
 			System.out.println("finally");
 			if (tx.isActive()) {

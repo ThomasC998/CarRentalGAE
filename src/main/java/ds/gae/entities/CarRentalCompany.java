@@ -24,7 +24,6 @@ import com.google.cloud.datastore.Query;
 import com.google.cloud.datastore.QueryResults;
 import com.google.cloud.datastore.StructuredQuery.CompositeFilter;
 import com.google.cloud.datastore.StructuredQuery.PropertyFilter;
-import com.google.cloud.datastore.Transaction;
 
 import ds.gae.ReservationException;
 
@@ -38,7 +37,7 @@ public class CarRentalCompany {
 	private Set<Car> cars;
 	// children
 	private Map<String, CarType> carTypes = new HashMap<String, CarType>();
-
+	
 	/***************
 	 * CONSTRUCTOR *
 	 ***************/

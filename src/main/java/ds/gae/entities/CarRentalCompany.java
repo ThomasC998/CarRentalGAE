@@ -24,6 +24,7 @@ import com.google.cloud.datastore.Query;
 import com.google.cloud.datastore.QueryResults;
 import com.google.cloud.datastore.StructuredQuery.CompositeFilter;
 import com.google.cloud.datastore.StructuredQuery.PropertyFilter;
+import com.google.cloud.datastore.Transaction;
 
 import ds.gae.ReservationException;
 
@@ -37,7 +38,7 @@ public class CarRentalCompany {
 	private Set<Car> cars;
 	// children
 	private Map<String, CarType> carTypes = new HashMap<String, CarType>();
-	
+
 	/***************
 	 * CONSTRUCTOR *
 	 ***************/
@@ -439,7 +440,7 @@ public class CarRentalCompany {
 		return res;
 	}
 	
-	public Car getAvailableCar(Quote quote) throws ReservationException {
+	public Car getAvailableCar(Quote quote, List<Reservation> currentReservations) throws ReservationException {
 		logger.log(Level.INFO, "<{0}> Reservation of {1}", new Object[] { name, quote.toString() });
 		List<Car> availableCars = getAvailableCars(quote.getCarType(), quote.getStartDate(), quote.getEndDate());
 		System.out.println("available cars size " + availableCars.size());
@@ -448,7 +449,35 @@ public class CarRentalCompany {
 			throw new ReservationException("Reservation failed, all cars of type " + quote.getCarType()
 					+ " are unavailable from " + quote.getStartDate() + " to " + quote.getEndDate());
 		}
-		Car car = availableCars.get((int) (Math.random() * availableCars.size()));
+
+		// don't pick a car randomly, check the list of currentReservations that are already
+		// confirmed in the transaction
+		Car car = null;
+		boolean carAvailable = false;;
+		System.out.println("currentReservations");
+		System.out.println(currentReservations.stream().map(res -> res.getCarId()).collect(Collectors.toList()));
+		for (Car availableCar: availableCars) {
+			System.out.println("availableCar");
+			System.out.println(availableCar.getId());
+			boolean contains = false;
+			for (Reservation res: currentReservations) {
+				if (res.getCarId() == availableCar.getId() && res.getRentalCompany().equals(availableCar.getRentalCompanyName())) {
+					System.out.println("same car as reservation");
+					contains = true;
+				}
+			}
+			if (!contains) {
+				car = availableCar;
+				carAvailable = true;
+				break;
+			}
+		}
+		if (!carAvailable) {
+			throw new ReservationException("Reservation failed, all cars of type " + quote.getCarType()
+			+ " are unavailable from " + quote.getStartDate() + " to " + quote.getEndDate());
+		}
+		
+//		Car car = availableCars.get((int) (Math.random() * availableCars.size()));
 		return car;
 	}
 

@@ -10,9 +10,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 
-import com.google.appengine.api.taskqueue.Queue;
-import com.google.appengine.api.taskqueue.QueueFactory;
-import com.google.appengine.api.taskqueue.TaskOptions;
 import com.google.cloud.Timestamp;
 import com.google.cloud.datastore.Datastore;
 import com.google.cloud.datastore.DatastoreOptions;
@@ -170,22 +167,17 @@ public class CarRentalModel {
 		List<Reservation> reservations = new ArrayList<Reservation>();
 		try {
 			for (Quote quote: quotes) {
-				Reservation reservation = confirmQuoteInTransaction(quote, tx);
-				for (Reservation alreadyConfirmedReservation: reservations) {
-					if (alreadyConfirmedReservation.getCarId() == reservation.getCarId()
-							&& alreadyConfirmedReservation.getRentalCompany().equals(reservation.getRentalCompany())) {
-						throw new ReservationException("Reservation failed, this renter tried to reserve the car with id "
-							+ reservation.getCarId() + " of rental company " + reservation.getRentalCompany() + " more than once.");
-					}
-				}
+				Reservation reservation = confirmQuoteInTransaction(quote, tx, reservations);
+//				for (Reservation alreadyConfirmedReservation: reservations) {
+//					if (alreadyConfirmedReservation.getCarId() == reservation.getCarId()
+//							&& alreadyConfirmedReservation.getRentalCompany().equals(reservation.getRentalCompany())) {
+//						throw new ReservationException("Reservation failed, this renter tried to reserve the car with id "
+//							+ reservation.getCarId() + " of rental company " + reservation.getRentalCompany() + " more than once.");
+//					}
+//				}
 				reservations.add(reservation);
 			}
 			tx.commit();
-			
-			// Add a task to the queue to inform the user the quote has been confirmed
-			Queue queue = QueueFactory.getDefaultQueue();
-			queue.add(TaskOptions.Builder.withUrl("/worker")); //.header("Host", "service") default header is used .param("reservations","test")
-			
 		} finally {
 			System.out.println("finally");
 			if (tx.isActive()) {
@@ -196,7 +188,7 @@ public class CarRentalModel {
     	return reservations;
 	}
 	
-	private Reservation confirmQuoteInTransaction(Quote quote, Transaction tx) throws ReservationException {
+	private Reservation confirmQuoteInTransaction(Quote quote, Transaction tx, List<Reservation> reservations) throws ReservationException {
 		
 		Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
 		
@@ -210,7 +202,7 @@ public class CarRentalModel {
 		CarRentalCompany crc = new CarRentalCompany(crcEntity.getKey().getName(), cars);
 		
 		System.out.println("getAvailableCar in confirmQuoteInTransaction");
-		Car car = crc.getAvailableCar(quote);
+		Car car = crc.getAvailableCar(quote, reservations);
 		Reservation res = new Reservation(quote, car.getId());
 
 		String carTypeId = quote.getCarType();

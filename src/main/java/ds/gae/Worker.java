@@ -13,7 +13,6 @@ public class Worker extends HttpServlet {
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
 		System.out.println("Worker start=================");
-		
 		// Set the status so it succeeds
 		resp.setStatus(200);
 	}

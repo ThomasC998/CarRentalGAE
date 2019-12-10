@@ -11,6 +11,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.logging.Level;
 
 import com.google.appengine.api.taskqueue.Queue;
@@ -166,27 +167,31 @@ public class CarRentalModel {
 	 * @throws ReservationException One of the quotes cannot be confirmed. Therefore
 	 *                              none of the given quotes is confirmed.
 	 */
-	public void confirmQuotes(List<Quote> quotes) throws ReservationException {
+	public String confirmQuotes(List<Quote> quotes) throws ReservationException {
 		
 		if (quotes == null || quotes.isEmpty()) {
-    		return;
+    		return "";
     	}
+		
+		// make a new orderId and order
+		String orderId = UUID.randomUUID().toString();
+		Order order = new Order(orderId, quotes);
 		
 		//Send the quotes to the worker
 		ByteArrayOutputStream bs = new ByteArrayOutputStream();
 		
-		//TODO: is dit nodig?
 		try {
 			ObjectOutputStream oos = new ObjectOutputStream(bs);
-			oos.writeObject(quotes);
+			oos.writeObject(order);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		
-		// Add a task to the queue
+		// Add a task to the queue with the order as payload
 		Queue queue = QueueFactory.getDefaultQueue();
 		queue.add(TaskOptions.Builder.withUrl("/worker").payload(bs.toByteArray()));
 		
+		return orderId;
 		
 //		Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
 //		Transaction tx = datastore.newTransaction();

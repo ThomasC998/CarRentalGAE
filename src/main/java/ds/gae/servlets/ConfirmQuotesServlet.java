@@ -26,22 +26,24 @@ public class ConfirmQuotesServlet extends HttpServlet {
 		
 		HttpSession session = req.getSession();
 		HashMap<String, ArrayList<Quote>> allQuotes = (HashMap<String, ArrayList<Quote>>) session.getAttribute("quotes");
-
+		
+		
 		try {
 			ArrayList<Quote> qs = new ArrayList<Quote>();
 			
 			for (String crcName : allQuotes.keySet()) {
 				qs.addAll(allQuotes.get(crcName));
 			}
-			CarRentalModel.get().confirmQuotes(qs);
+			String orderId = CarRentalModel.get().confirmQuotes(qs);
 			
 			session.setAttribute("quotes", new HashMap<String, ArrayList<Quote>>());
+			session.setAttribute("orderId", orderId);
 			
 			// TODO
 			// If you wish confirmQuotesReply.jsp to be shown to the client as
 			// a response of calling this servlet, please replace the following line 
-//			resp.sendRedirect(JSPSite.CONFIRM_QUOTES_RESPONSE.url());
-			resp.sendRedirect(JSPSite.CREATE_QUOTES.url());
+			resp.sendRedirect(JSPSite.CONFIRM_QUOTES_RESPONSE.url());
+//			resp.sendRedirect(JSPSite.CREATE_QUOTES.url());
 		} catch (ReservationException e) {
 			session.setAttribute("errorMsg", Tools.encodeHTML(e.getMessage()));
 			resp.sendRedirect(JSPSite.RESERVATION_ERROR.url());				

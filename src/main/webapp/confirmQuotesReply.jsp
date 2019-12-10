@@ -4,6 +4,7 @@
 
 <% session.setAttribute("currentPage", JSPSite.CONFIRM_QUOTES_RESPONSE); %>
 <% String renter = (String) session.getAttribute("renter"); %>
+<% String orderId = (String) session.getAttribute("orderId"); %>
 
 <%@include file="_header.jsp"%>
 
@@ -14,8 +15,13 @@
 		<p>
 <!-- 			TODO: Here you can give some information to client who is currently  -->
 <%-- 			logged in as user <%=renter%>. --%>
-			The reservations for <%=renter%> are being processed.
-			You will receive a mail when they are confirmed or when something we
+		The reservations for <%=renter%> are being processed.
+		</p>
+		<p>
+		Your order ID is: <%=orderId%>.
+		</p>
+		<p>
+		You will receive a mail when they are confirmed or when something went wrong.
 		</p>
 	</div>
 </div>

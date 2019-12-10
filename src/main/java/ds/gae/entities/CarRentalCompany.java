@@ -322,11 +322,11 @@ public class CarRentalCompany {
 		
 		// get reserved cars
 		List<Car> reservedCars = getReservedCars(carType, start, end);
-		System.out.println("reservedCars size " + reservedCars.size());
+		//System.out.println("reservedCars size " + reservedCars.size());
 		
 		// get all cars (available and reserved)
 		List<Car> allCars = getAllCars(carType, start, end);
-		System.out.println("allCars size " + allCars.size());
+		//System.out.println("allCars size " + allCars.size());
 		
 		// available cars are cars that are not reserved in the given period
 		for (Car car: allCars) {
@@ -354,9 +354,9 @@ public class CarRentalCompany {
 		for (Car availableCar: availableCars) {
 			availableIds.add(availableCar.getId());
 		}
-		System.out.println("reserved carIds " + reservedIds);
-		System.out.println("all carIds " + allIds);
-		System.out.println("available carIds " + availableIds);
+//		System.out.println("reserved carIds " + reservedIds);
+//		System.out.println("all carIds " + allIds);
+//		System.out.println("available carIds " + availableIds);
 		
 		return availableCars;
 	}
@@ -443,8 +443,8 @@ public class CarRentalCompany {
 	public Car getAvailableCar(Quote quote, List<Reservation> currentReservations) throws ReservationException {
 		logger.log(Level.INFO, "<{0}> Reservation of {1}", new Object[] { name, quote.toString() });
 		List<Car> availableCars = getAvailableCars(quote.getCarType(), quote.getStartDate(), quote.getEndDate());
-		System.out.println("available cars size " + availableCars.size());
-		System.out.println("available cars ids " + availableCars.stream().map(car -> car.getId()).collect(Collectors.toList()));
+		//System.out.println("available cars size " + availableCars.size());
+		//System.out.println("available cars ids " + availableCars.stream().map(car -> car.getId()).collect(Collectors.toList()));
 		if (availableCars.isEmpty()) {
 			throw new ReservationException("Reservation failed, all cars of type " + quote.getCarType()
 					+ " are unavailable from " + quote.getStartDate() + " to " + quote.getEndDate());
@@ -454,15 +454,15 @@ public class CarRentalCompany {
 		// confirmed in the transaction
 		Car car = null;
 		boolean carAvailable = false;;
-		System.out.println("currentReservations");
-		System.out.println(currentReservations.stream().map(res -> res.getCarId()).collect(Collectors.toList()));
+		//System.out.println("currentReservations");
+		//System.out.println(currentReservations.stream().map(res -> res.getCarId()).collect(Collectors.toList()));
 		for (Car availableCar: availableCars) {
-			System.out.println("availableCar");
-			System.out.println(availableCar.getId());
+			//System.out.println("availableCar");
+			//System.out.println(availableCar.getId());
 			boolean contains = false;
 			for (Reservation res: currentReservations) {
 				if (res.getCarId() == availableCar.getId() && res.getRentalCompany().equals(availableCar.getRentalCompanyName())) {
-					System.out.println("same car as reservation");
+					//System.out.println("same car as reservation");
 					contains = true;
 				}
 			}

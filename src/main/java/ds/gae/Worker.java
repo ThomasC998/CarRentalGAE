@@ -31,14 +31,12 @@ public class Worker extends HttpServlet {
 
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-		System.out.println("Worker start=================");
-		
-		
-		
+
 		try {
 			// Retrieve the quotes list object from the request
 			ObjectInputStream ois = new ObjectInputStream(req.getInputStream());
-			List<Quote> quotes = (List<Quote>) ois.readObject();
+			Order order = (Order) ois.readObject();
+			List<Quote> quotes = order.getQuotes();
 			String renter = quotes.get(0).getRenter();
 			
 			try {
@@ -46,17 +44,15 @@ public class Worker extends HttpServlet {
 				List<Reservation> confirmedReservations = confirmQuotes(quotes);
 				
 				// send mail
-				//TODO: orderID toevoegen
 				System.out.println();
 				System.out.println("Mail to: " + renter);
-				System.out.println("Subject: Reservations confirmed!");
+				System.out.println("Subject: Reservations for orderId: " + order.getOrderId() +  " confirmed!");
 				System.out.println("Body: ");
 				System.out.println("--- Your reservations have been successfully confirmed!");
 				System.out.println("--- Reservations for user " + renter + ":");
 				for(int i = 1; i <= confirmedReservations.size();i++) {
 					System.out.println("--- " + i + ") " + confirmedReservations.get(i-1));
 				}
-				
 				// Task succeeded
 				resp.setStatus(200);
 			}catch(ReservationException e) {
@@ -64,7 +60,7 @@ public class Worker extends HttpServlet {
 				// send mail
 				System.out.println();
 				System.out.println("Mail to: " + renter);
-				System.out.println("Subject: Reservations failed!");
+				System.out.println("Subject: Reservations for orderId: " + order.getOrderId() +  " failed!");
 				System.out.println("Body: ");
 				System.out.println("--- Your given reservation constraints are not possible!");
 			}
@@ -93,7 +89,7 @@ public class Worker extends HttpServlet {
 			}
 			tx.commit();
 		} finally {
-			System.out.println("finally");
+			//System.out.println("finally");
 			if (tx.isActive()) {
 				System.out.println("rollback");
 				tx.rollback();

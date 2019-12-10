@@ -1,5 +1,8 @@
 package ds.gae;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -10,6 +13,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 
+import com.google.appengine.api.taskqueue.Queue;
+import com.google.appengine.api.taskqueue.QueueFactory;
+import com.google.appengine.api.taskqueue.TaskOptions;
 import com.google.cloud.Timestamp;
 import com.google.cloud.datastore.Datastore;
 import com.google.cloud.datastore.DatastoreOptions;
@@ -160,72 +166,93 @@ public class CarRentalModel {
 	 * @throws ReservationException One of the quotes cannot be confirmed. Therefore
 	 *                              none of the given quotes is confirmed.
 	 */
-	public List<Reservation> confirmQuotes(List<Quote> quotes) throws ReservationException {
-		Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
-		Transaction tx = datastore.newTransaction();
+	public void confirmQuotes(List<Quote> quotes) throws ReservationException {
 		
-		List<Reservation> reservations = new ArrayList<Reservation>();
+		if (quotes == null || quotes.isEmpty()) {
+    		return;
+    	}
+		
+		//Send the quotes to the worker
+		ByteArrayOutputStream bs = new ByteArrayOutputStream();
+		
+		//TODO: is dit nodig?
 		try {
-			for (Quote quote: quotes) {
-				Reservation reservation = confirmQuoteInTransaction(quote, tx, reservations);
-//				for (Reservation alreadyConfirmedReservation: reservations) {
-//					if (alreadyConfirmedReservation.getCarId() == reservation.getCarId()
-//							&& alreadyConfirmedReservation.getRentalCompany().equals(reservation.getRentalCompany())) {
-//						throw new ReservationException("Reservation failed, this renter tried to reserve the car with id "
-//							+ reservation.getCarId() + " of rental company " + reservation.getRentalCompany() + " more than once.");
-//					}
-//				}
-				reservations.add(reservation);
-			}
-			tx.commit();
-		} finally {
-			System.out.println("finally");
-			if (tx.isActive()) {
-				System.out.println("rollback");
-				tx.rollback();
-			}
+			ObjectOutputStream oos = new ObjectOutputStream(bs);
+			oos.writeObject(quotes);
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
-    	return reservations;
+		
+		// Add a task to the queue
+		Queue queue = QueueFactory.getDefaultQueue();
+		queue.add(TaskOptions.Builder.withUrl("/worker").payload(bs.toByteArray()));
+		
+		
+//		Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
+//		Transaction tx = datastore.newTransaction();
+//		
+//		List<Reservation> reservations = new ArrayList<Reservation>();
+//		try {
+//			for (Quote quote: quotes) {
+//				Reservation reservation = confirmQuoteInTransaction(quote, tx, reservations);
+////				for (Reservation alreadyConfirmedReservation: reservations) {
+////					if (alreadyConfirmedReservation.getCarId() == reservation.getCarId()
+////							&& alreadyConfirmedReservation.getRentalCompany().equals(reservation.getRentalCompany())) {
+////						throw new ReservationException("Reservation failed, this renter tried to reserve the car with id "
+////							+ reservation.getCarId() + " of rental company " + reservation.getRentalCompany() + " more than once.");
+////					}
+////				}
+//				reservations.add(reservation);
+//			}
+//			tx.commit();
+//		} finally {
+//			System.out.println("finally");
+//			if (tx.isActive()) {
+//				System.out.println("rollback");
+//				tx.rollback();
+//			}
+//		}
+//    	return reservations;
 	}
 	
-	private Reservation confirmQuoteInTransaction(Quote quote, Transaction tx, List<Reservation> reservations) throws ReservationException {
-		
-		Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
-		
-		Key crcKey = datastore.newKeyFactory()
-				.setKind("crc")
-				.newKey(quote.getRentalCompany());
-		
-		Entity crcEntity = datastore.get(crcKey);
-		
-		Set<Car> cars = new HashSet<Car>();
-		CarRentalCompany crc = new CarRentalCompany(crcEntity.getKey().getName(), cars);
-		
-		System.out.println("getAvailableCar in confirmQuoteInTransaction");
-		Car car = crc.getAvailableCar(quote, reservations);
-		Reservation res = new Reservation(quote, car.getId());
-
-		String carTypeId = quote.getCarType();
-		KeyFactory keyFactory = datastore.newKeyFactory()
-				.addAncestors(
-						PathElement.of("crc", quote.getRentalCompany()),
-						PathElement.of("cartype", carTypeId),
-						PathElement.of("car", car.getId()))
-				.setKind("reservation");
-		Key reservationKey = datastore.allocateId(keyFactory.newKey());
-		Entity reservationEntity = Entity.newBuilder(reservationKey)
-				.set("renter", quote.getRenter())
-				.set("startDate", Timestamp.of(quote.getStartDate()))
-				.set("endDate", Timestamp.of(quote.getEndDate()))
-				.set("rentalPrice", quote.getRentalPrice())
-				.build();
-		
-		tx.put(reservationEntity);
-		System.out.println("reservations");
-		System.out.println(getReservations(quote.getRenter()));
-		
-		return res;
-	}
+//	private Reservation confirmQuoteInTransaction(Quote quote, Transaction tx, List<Reservation> reservations) throws ReservationException {
+//		
+//		Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
+//		
+//		Key crcKey = datastore.newKeyFactory()
+//				.setKind("crc")
+//				.newKey(quote.getRentalCompany());
+//		
+//		Entity crcEntity = datastore.get(crcKey);
+//		
+//		Set<Car> cars = new HashSet<Car>();
+//		CarRentalCompany crc = new CarRentalCompany(crcEntity.getKey().getName(), cars);
+//		
+//		System.out.println("getAvailableCar in confirmQuoteInTransaction");
+//		Car car = crc.getAvailableCar(quote, reservations);
+//		Reservation res = new Reservation(quote, car.getId());
+//
+//		String carTypeId = quote.getCarType();
+//		KeyFactory keyFactory = datastore.newKeyFactory()
+//				.addAncestors(
+//						PathElement.of("crc", quote.getRentalCompany()),
+//						PathElement.of("cartype", carTypeId),
+//						PathElement.of("car", car.getId()))
+//				.setKind("reservation");
+//		Key reservationKey = datastore.allocateId(keyFactory.newKey());
+//		Entity reservationEntity = Entity.newBuilder(reservationKey)
+//				.set("renter", quote.getRenter())
+//				.set("startDate", Timestamp.of(quote.getStartDate()))
+//				.set("endDate", Timestamp.of(quote.getEndDate()))
+//				.set("rentalPrice", quote.getRentalPrice())
+//				.build();
+//		
+//		tx.put(reservationEntity);
+//		System.out.println("reservations");
+//		System.out.println(getReservations(quote.getRenter()));
+//		
+//		return res;
+//	}
 
 	/**
 	 * Get all reservations made by the given car renter.

@@ -218,10 +218,7 @@ public class CarRentalCompany {
 	 * @param carType
 	 * @param start
 	 * @param end
-	 * @return if (!carType.equals(""))
-	 * 				Map of cars of a carType that are currently reserved as keys, together with its carRentalCompany as values
-	 * 		   else
-	 * 				Map of all cars that are currently reserved as keys, together with its carRentalCompany as values
+	 * @return 
 	 */
 	private List<Car> getReservedCars(String carType, Date start, Date end) {
 		
@@ -246,7 +243,7 @@ public class CarRentalCompany {
 					carId = reservationAncestor.getId().intValue();
 				}
 			}
-			if (carType.equals(carTypeName) || carType.equals("")) {
+			if ((carType.equals(carTypeName) || carType.equals("")) && (this.getName().equals(crcName))) {
 				Key carTypeKey = datastore.newKeyFactory()
 						.addAncestor(PathElement.of("crc", crcName))
 						.setKind("cartype")
@@ -270,10 +267,7 @@ public class CarRentalCompany {
 	 * @param carType
 	 * @param start
 	 * @param end
-	 * @return if (!carType.equals(""))
-	 * 				Map of cars of a carType as keys, together with its carRentalCompany as values
-	 * 		   else
-	 * 				Map of all cars as keys, together with its carRentalCompany as values
+	 * @return 
 	 */
 	private List<Car> getAllCars(String carType, Date start, Date end) {
 		
@@ -297,7 +291,7 @@ public class CarRentalCompany {
 					carTypeName = carAncestor.getName();
 				}
 			}
-			if (carType.equals(carTypeName) || carType.equals("")) {
+			if ((carType.equals(carTypeName) || carType.equals("")) && (this.getName().equals(crcName))) {
 				Key carTypeKey = datastore.newKeyFactory()
 						.addAncestor(PathElement.of("crc", crcName))
 						.setKind("cartype")
@@ -453,7 +447,7 @@ public class CarRentalCompany {
 		// don't pick a car randomly, check the list of currentReservations that are already
 		// confirmed in the transaction
 		Car car = null;
-		boolean carAvailable = false;;
+		boolean carAvailable = false;
 		//System.out.println("currentReservations");
 		//System.out.println(currentReservations.stream().map(res -> res.getCarId()).collect(Collectors.toList()));
 		for (Car availableCar: availableCars) {

@@ -5,8 +5,14 @@ import java.io.ObjectInputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Properties;
 import java.util.Set;
 
+import javax.mail.Message;
+import javax.mail.Session;
+import javax.mail.Transport;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeMessage;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -38,6 +44,13 @@ public class Worker extends HttpServlet {
 			Order order = (Order) ois.readObject();
 			List<Quote> quotes = order.getQuotes();
 			String renter = quotes.get(0).getRenter();
+
+			// add a fictional delay, representing processing time of the worker
+			try {
+				Thread.sleep(10000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 			
 			try {
 				// confirm the quotes
@@ -50,7 +63,7 @@ public class Worker extends HttpServlet {
 				System.out.println("Body: ");
 				System.out.println("--- Your reservations have been successfully confirmed!");
 				System.out.println("--- Reservations for user " + renter + ":");
-				for(int i = 1; i <= confirmedReservations.size();i++) {
+				for(int i = 1; i <= confirmedReservations.size(); i++) {
 					System.out.println("--- " + i + ") " + confirmedReservations.get(i-1));
 				}
 				// Task succeeded
@@ -78,20 +91,11 @@ public class Worker extends HttpServlet {
 		try {
 			for (Quote quote: quotes) {
 				Reservation reservation = confirmQuoteInTransaction(quote, tx, reservations);
-//				for (Reservation alreadyConfirmedReservation: reservations) {
-//					if (alreadyConfirmedReservation.getCarId() == reservation.getCarId()
-//							&& alreadyConfirmedReservation.getRentalCompany().equals(reservation.getRentalCompany())) {
-//						throw new ReservationException("Reservation failed, this renter tried to reserve the car with id "
-//							+ reservation.getCarId() + " of rental company " + reservation.getRentalCompany() + " more than once.");
-//					}
-//				}
 				reservations.add(reservation);
 			}
 			tx.commit();
 		} finally {
-			//System.out.println("finally");
 			if (tx.isActive()) {
-				System.out.println("rollback");
 				tx.rollback();
 			}
 		}
@@ -112,15 +116,13 @@ public class Worker extends HttpServlet {
 		Set<Car> cars = new HashSet<Car>();
 		CarRentalCompany crc = new CarRentalCompany(crcEntity.getKey().getName(), cars);
 		
-		System.out.println("getAvailableCar in confirmQuoteInTransaction");
 		Car car = crc.getAvailableCar(quote, reservations);
 		Reservation res = new Reservation(quote, car.getId());
 
-		String carTypeId = quote.getCarType();
 		KeyFactory keyFactory = datastore.newKeyFactory()
 				.addAncestors(
 						PathElement.of("crc", quote.getRentalCompany()),
-						PathElement.of("cartype", carTypeId),
+						PathElement.of("cartype", quote.getCarType()),
 						PathElement.of("car", car.getId()))
 				.setKind("reservation");
 		Key reservationKey = datastore.allocateId(keyFactory.newKey());
@@ -132,8 +134,6 @@ public class Worker extends HttpServlet {
 				.build();
 		
 		tx.put(reservationEntity);
-		//System.out.println("reservations");
-		//System.out.println(getReservations(quote.getRenter()));
 		
 		return res;
 	}

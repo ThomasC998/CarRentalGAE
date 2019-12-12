@@ -49,49 +49,6 @@ public class CarRentalCompany {
 		for(Car car : cars) {
 			carTypes.put(car.getType().getName(), car.getType());
 		}
-		
-//		// store crc in datastore
-//		Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
-//		Key crcKey = datastore.newKeyFactory()
-//				.setKind("crc")
-//				.newKey(name);
-//		Entity crcEntity = Entity.newBuilder(crcKey)
-//				.build();
-//		datastore.put(crcEntity);
-//		
-//		// store carTypes in datastore
-//		Set<CarType> cartypes = new HashSet<CarType>();
-//		for (Car car: cars) {
-//			cartypes.add(car.getType());
-//		}
-//		for (CarType cartype: cartypes) {
-//			String carTypeId = cartype.getName();
-//			Key carTypeKey = datastore.newKeyFactory()
-//					.addAncestor(PathElement.of("crc", name))
-//					.setKind("cartype")
-//					.newKey(carTypeId);
-//			Entity carTypeEntity = Entity.newBuilder(carTypeKey)
-//					.set("nbOfSeats", cartype.getNbOfSeats())
-//					.set("smokingAllowed", cartype.isSmokingAllowed())
-//					.set("rentalPricePerDay", cartype.getRentalPricePerDay())
-//					.set("trunkSpace", cartype.getTrunkSpace())
-//					.build();
-//			datastore.put(carTypeEntity);
-//		}
-//		
-//		// store cars in datastore
-//		for (Car car: cars) {
-//			String carTypeId = car.getType().getName();
-//			Key carKey = datastore.newKeyFactory()
-//					.addAncestors(
-//							PathElement.of("crc", name),
-//							PathElement.of("cartype", carTypeId))
-//					.setKind("car")
-//					.newKey(car.getId());
-//			Entity carEntity = Entity.newBuilder(carKey)
-//					.build();
-//			datastore.put(carEntity);
-//		}
 	}
 
 	/********
@@ -214,11 +171,14 @@ public class CarRentalCompany {
 	}
 	
 	/**
+	 * Get all cars of this CarRentalCompany and of the given carType
+	 * that are reserved in (partially) in the date range from the given
+	 * start until the given end.
 	 * 
 	 * @param carType
 	 * @param start
 	 * @param end
-	 * @return 
+	 * @return List<Car>
 	 */
 	private List<Car> getReservedCars(String carType, Date start, Date end) {
 		
@@ -263,13 +223,12 @@ public class CarRentalCompany {
 	}
 	
 	/**
+	 * Get all cars of this CarRentalCompany and of the given carType.
 	 * 
 	 * @param carType
-	 * @param start
-	 * @param end
-	 * @return 
+	 * @return List<Car>
 	 */
-	private List<Car> getAllCars(String carType, Date start, Date end) {
+	private List<Car> getAllCars(String carType) {
 		
 		Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
 		
@@ -311,16 +270,24 @@ public class CarRentalCompany {
 		return allCars;
 	}
 
+	/**
+	 * Get all cars of this CarRentalCompany and of the given carType
+	 * that are available in the date range from the given
+	 * start until the given end.
+	 * 
+	 * @param carType
+	 * @param start
+	 * @param end
+	 * @return List<Car>
+	 */
 	private List<Car> getAvailableCars(String carType, Date start, Date end) {
 		List<Car> availableCars = new ArrayList<Car>();
 		
 		// get reserved cars
 		List<Car> reservedCars = getReservedCars(carType, start, end);
-		//System.out.println("reservedCars size " + reservedCars.size());
 		
 		// get all cars (available and reserved)
-		List<Car> allCars = getAllCars(carType, start, end);
-		//System.out.println("allCars size " + allCars.size());
+		List<Car> allCars = getAllCars(carType);
 		
 		// available cars are cars that are not reserved in the given period
 		for (Car car: allCars) {
@@ -334,23 +301,6 @@ public class CarRentalCompany {
 				availableCars.add(car);
 			}
 		}
-		
-		// for tests
-		List<Integer> reservedIds = new ArrayList<Integer>();
-		List<Integer> allIds = new ArrayList<Integer>();
-		List<Integer> availableIds = new ArrayList<Integer>();
-		for (Car reservedCar: reservedCars) {
-			reservedIds.add(reservedCar.getId());
-		}
-		for (Car allCar: allCars) {
-			allIds.add(allCar.getId());
-		}
-		for (Car availableCar: availableCars) {
-			availableIds.add(availableCar.getId());
-		}
-//		System.out.println("reserved carIds " + reservedIds);
-//		System.out.println("all carIds " + allIds);
-//		System.out.println("available carIds " + availableIds);
 		
 		return availableCars;
 	}
@@ -411,7 +361,6 @@ public class CarRentalCompany {
 		car.addReservation(res);
 		
 		// use datastore
-		
 		Datastore datastore = DatastoreOptions.getDefaultInstance().getService();
 		
 		String carTypeId = quote.getCarType();
@@ -437,8 +386,6 @@ public class CarRentalCompany {
 	public Car getAvailableCar(Quote quote, List<Reservation> currentReservations) throws ReservationException {
 		logger.log(Level.INFO, "<{0}> Reservation of {1}", new Object[] { name, quote.toString() });
 		List<Car> availableCars = getAvailableCars(quote.getCarType(), quote.getStartDate(), quote.getEndDate());
-		//System.out.println("available cars size " + availableCars.size());
-		//System.out.println("available cars ids " + availableCars.stream().map(car -> car.getId()).collect(Collectors.toList()));
 		if (availableCars.isEmpty()) {
 			throw new ReservationException("Reservation failed, all cars of type " + quote.getCarType()
 					+ " are unavailable from " + quote.getStartDate() + " to " + quote.getEndDate());
@@ -448,15 +395,10 @@ public class CarRentalCompany {
 		// confirmed in the transaction
 		Car car = null;
 		boolean carAvailable = false;
-		//System.out.println("currentReservations");
-		//System.out.println(currentReservations.stream().map(res -> res.getCarId()).collect(Collectors.toList()));
 		for (Car availableCar: availableCars) {
-			//System.out.println("availableCar");
-			//System.out.println(availableCar.getId());
 			boolean contains = false;
 			for (Reservation res: currentReservations) {
 				if (res.getCarId() == availableCar.getId() && res.getRentalCompany().equals(availableCar.getRentalCompanyName())) {
-					//System.out.println("same car as reservation");
 					contains = true;
 				}
 			}
@@ -471,7 +413,6 @@ public class CarRentalCompany {
 			+ " are unavailable from " + quote.getStartDate() + " to " + quote.getEndDate());
 		}
 		
-//		Car car = availableCars.get((int) (Math.random() * availableCars.size()));
 		return car;
 	}
 

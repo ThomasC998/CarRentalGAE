@@ -45,9 +45,15 @@ public class CarRentalModel {
 		if (instance == null) {
 			instance = new CarRentalModel();
 		}
+		queue = QueueFactory.getDefaultQueue();
 		return instance;
 	}
 
+	/**
+	 * The task queue of this CarRentalModel instance
+	 */
+	static Queue queue;
+	
 	/**
 	 * Get the car types available in the given car rental company.
 	 *
@@ -188,7 +194,6 @@ public class CarRentalModel {
 		}
 		
 		// Add a task to the queue with the order as payload
-		Queue queue = QueueFactory.getDefaultQueue();
 		queue.add(TaskOptions.Builder.withUrl("/worker").payload(bs.toByteArray()));
 		
 		return orderId;
